@@ -60,6 +60,9 @@ function QueueHandler(){
 		console.log('at fetch timelines, current fro ' + JSON.stringify(froQueue[0])+ '\n\n');
 		getTimeline(froQueue[0]);
 		break;
+	case FINISHED:
+		//remove fro from queue, add to id -> fro map
+		break;
   }
 }
 
@@ -210,17 +213,16 @@ function getTimeline(theFRO) {
 		return;
     }
 
-	var summonerDataCurrentMatch = theFRO.summonerDataCurrentMatch;
-	var summonerData = {};
-	var changeState = true;
 	//find summoner data we are working with
 	var matchesToFetch = theFRO.summonerDataCurrentMatch[theFRO.summonerForTimeline].recentMatchesWithCurrentChamp;
 	
-	var matchId;
+	var matchObject;
 	for(var i = 0; i < matchesToFetch; i++){
 		if (!matchesToFetch[i].timeLine && !matchesToFetch[i].startedTimeLineRetrieval) {
             //we found a match without a timeline
-			matchId = matchesToFetch[i].matchId;
+			matchObject = matchesToFetch[i];
+			//flag start of timeline download
+			matchObject.startedTimeLineRetrieval = true;
         }
 	}
 	
@@ -243,9 +245,11 @@ function getTimeline(theFRO) {
 		//console.log(JSONResponseString);
 		var JSONResponseObject = JSON.parse(JSONResponseString);
 		if(JSONResponseObject.status){
+			//failure
 			reportError(JSONResponseObject.status[Object.getOwnPropertyNames(JSONResponseObject.status)[1]]);
 		} else {
-			
+			//success
+			matchObject.timeLine = 
 		}
 		
     });
