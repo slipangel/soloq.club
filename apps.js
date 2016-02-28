@@ -127,7 +127,11 @@ app.get("/matchId/:match", function(req,res){
 					console.log('\n');
 					console.log(JSON.stringify(participantMap));
 					res.setHeader('Content-Type', 'application/json');
+<<<<<<< HEAD
 				    res.setHeader('Cache-Control', 'no-cache');
+=======
+					res.setHeader('Access-Control-Allow-Origin', null);
+>>>>>>> 609d1e7f9f1f1f2901ce3ca81d2e8c0deee59b65
 					res.send(JSON.stringify(participantMap));
 				}
 			});
