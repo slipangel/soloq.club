@@ -6,31 +6,11 @@
     <link rel="stylesheet" href="style.css">
   </head>
   <body>
-    <script type="text/x-handlebars" data-template-name="soloq">
-      <section id="soloq">
-        <header id="header">
-          <h1>Gold</h1>
-          <input type="text" id="new-todo" placeholder="Enter summoner name here" />
-        </header>
-        <section id="soloq-section">
-          <ul id="soloq-list">
-            {{#each soloq in model}}
-              <li {{bind-attr class="todo.isCompleted:completed"}}>
-                <input type="checkbox" class="toggle">
-                <label>{{soloq.title}}</label><button class="destroy"></button>
-              </li>
-            {{/each}}
-          </ul>
-        </section>
-      </section>
+        <h1>Gold Chart</h1>
+        <svg id="visualisation" width="1000" height="500" style="border:1px solid black"></svg>
     </script>
     <script src="js/libs/jquery-1.11.2.min.js"></script>
-    <script src="js/libs/handlebars-v1.3.0.js"></script>
-    <script src="js/libs/ember.js"></script>
-    <script src="js/libs/ember-data.js"></script>
-    <script src="js/application.js"></script>
-    <script src="js/router.js"></script>
-    <script src="js/models/soloq.js"></script>
-    <script src="//d3js.org/d3.v3.min.js" charset="utf-8"></script>
+    <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+    <script src="js/coach.js"></script>
   </body>
 </html>

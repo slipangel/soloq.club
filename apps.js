@@ -123,6 +123,7 @@ app.get("/matchId/:match", function(req,res){
 					console.log('\n');
 					console.log(JSON.stringify(participantMap));
 					res.setHeader('Content-Type', 'application/json');
+					res.setHeader('Access-Control-Allow-Origin', null);
 					res.send(JSON.stringify(participantMap));
 				}
 			});
