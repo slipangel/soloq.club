@@ -9,6 +9,7 @@ const FETCH_CURRENT_GAME = 2;
 const FETCH_RECENT_MATCHES = 3;
 const FETCH_TIMELINES = 4;
 const FINISHED = 5;
+const DONE = 6;
 const INVALID_ID = -1;
 //RIOT API KEY
 var riotApiKey = '29b7f478-99c4-46af-b831-b5605e1b42af';
@@ -59,6 +60,9 @@ function QueueHandler(){
 	case FINISHED:
 		//remove fro from queue, add to id -> fro map
 		console.log('finished');//+ JSON.stringify(froQueue[0])+ '\n\n');
+		finalize(froQueue[0]);
+	case DONE:
+		console.log('done for reals');
 		break;
   }
 }
@@ -123,6 +127,7 @@ app.get("/matchId/:match", function(req,res){
 					console.log('\n');
 					console.log(JSON.stringify(participantMap));
 					res.setHeader('Content-Type', 'application/json');
+				    res.setHeader('Cache-Control', 'no-cache');
 					res.send(JSON.stringify(participantMap));
 				}
 			});
@@ -193,7 +198,8 @@ function getCurrentGameId(theFRO) {
 			var summonerData = { SummonerName : participantArray[i].summonerName,
 								SummonerId : participantArray[i].summonerId,
 								ChampId : participantArray[i].championId,
-								teamId : participantArray[i].teamId };
+								teamId : participantArray[i].teamId,
+								timelines : []};
 							 
 			summonerDataForFRO[i] = summonerData;
 		}
@@ -249,10 +255,10 @@ function getRecentGamesForSummoner(theFRO){
 				var recentMatchesWithCurrentChamp = [];
 				for(var i = 0; i < recentMatchList.length; i++){
 				//console.log('\n\nPlayer: ' + summonerData.SummonerName +' current champ Id: ' + summonerData.ChampId + ' history champ id: ' + recentMatchList[i].championId + '\n\n');
-					//if(recentMatchList[i].championId == summonerData.ChampId){
+					if(recentMatchList[i].championId == summonerData.ChampId){
 						//console.log('\n\nMatch found!!! id: '+ recentMatchList[i].gameId + '\n\n');
 						recentMatchesWithCurrentChamp.push({matchId : recentMatchList[i].gameId});
-					//}
+					}
 				}
 				summonerData.recentMatches = recentMatchesWithCurrentChamp;
 				summonerData.recentMatchLoadComplete = true;
@@ -267,7 +273,8 @@ function getTimeline(theFRO) {
 	//find summoner data we are working with
 	var findingMatches = true;
 	var matchesToFetch;
-
+	var participantMap = {};
+	
 	while (findingMatches) {
 		if (theFRO.summonerForTimeline > 9) {
 			//We're done!
@@ -287,7 +294,7 @@ function getTimeline(theFRO) {
     
 	console.log('Getting matches for summoner: ' + theFRO.summonerForTimeline
 				+ ' Total matches ' + matchesToFetch.length + '\n');
-	
+	var champId = theFRO.summonerDataCurrentMatch[theFRO.summonerForTimeline].ChampId;
 	var matchObject;
 	var continueToNextSummoner = true;
 	for(var i = 0; i < matchesToFetch.length; i++){
@@ -329,17 +336,101 @@ function getTimeline(theFRO) {
 			//failure
 			reportError(JSONResponseObject.status[Object.getOwnPropertyNames(JSONResponseObject.status)[1]]);
 		} else {
-			//success
-			//matchObject.timeLine =
-			console.log("Match id: " + matchObject.matchId + '\n\n');
-			
-		}
-		
+			var participantInformation = JSONResponseObject.participants;
+					
+			for(var i = 0; i < participantInformation.length; i++){
+				var property = '' + participantInformation[i].participantId;
+				participantMap[property] = { 'champId' : participantInformation[i].championId,
+											 'teamId' : participantInformation[i].teamId,
+											 'timeline' : []};
+											 
+				if (participantInformation[i].championId == champId) {
+                    participantMap[property].isCurrentSummoner = true;
+				} else {
+					participantMap[property].isCurrentSummoner = false;
+				}
+			}
+					
+			var summonerTimelineData = new Array(10);
+			var FrameList = JSONResponseObject.timeline.frames;
+			for(var i = 0; i < FrameList.length; i++){
+				var frame = FrameList[i];
+				//console.log('on frame ' + i + ' frame info ' + JSON.stringify(FrameList[i].participantFrames) + ' \n');
+				var time = Math.floor(frame.timestamp/60000);
+				//console.log('time: ' + time);
+				for (var j = 1; j<11; j++) {
+					//console.log('prop info' + JSON.stringify(FrameList[i].participantFrames[j].totalGold) + ' \n');
+					//var timeProp = '' + time;
+					participantMap[j].timeline[time] = {'gold' : FrameList[i].participantFrames[j].totalGold,
+														'xp'   : FrameList[i].participantFrames[j].xp};
+                    }
+				};
+				
+			//console.log('\n');
+			//console.log(JSON.stringify(participantMap));
+			matchObject.timeline = participantMap;
+		}		
     });
   });
   req.end();
 }
 
+function finalize(theFRO) {
+    var summonerDataCurrentMatch = theFRO.summonerDataCurrentMatch;
+	
+	for(var i = 0; i<summonerDataCurrentMatch.length; i++){
+		//For each summoner
+		var finalTimeline = [];
+		var summoner = summonerDataCurrentMatch[i];
+		var matchHistory = summoner.recentMatches;
+		//console.log('match history length: ' + JSON.stringify(summoner.recentMatches));
+		//discard unecessary timeline info
+		//console.log('match history length: ' + matchHistory.length);
+		for(var j = 0; j<matchHistory.length; j++){
+			//for each match played
+			//console.log('iteration: ' + j);
+			var timeline = {};
+			if (matchHistory[j].timeline) {
+                participantMap = matchHistory[j].timeline;
+            } else {
+				console.log('no timeline was found for match id: ' + matchHistory[j].matchId);
+				continue;
+			}
+			//console.log('\n\n' + JSON.stringify(participantMap) + '\n\n');
+			for (var n = 1; n<11; n++) {
+				//console.log('\n\n' + JSON.stringify(participantMap[n]) + '\n\n');
+                if(participantMap[n].isCurrentSummoner){
+					timeline = participantMap[n].timeline;
+					break;
+				}
+            }
+			console.log('\n\n' + JSON.stringify(timeline) + '\n\n');
+			for(var minute = 0; minute<timeline.length; minute++){
+				if (!finalTimeline[minute]) {
+					//if no timeline entry exists for a given minute in our final timeline, create a new one
+					finalTimeline[minute] = timeline[minute];
+					finalTimeline[minute].numberOfEntries = 1;	
+				} else {
+				//else add the values at j, increment number of entries
+					finalTimeline[minute].gold += timeline[minute].gold;
+					finalTimeline[minute].xp += timeline[minute].xp;
+					finalTimeline[minute].numberOfEntries++;
+				}
+			}
+		}
+		//average timeline values
+		//console.log('Final timeline pre avg \n\n' + JSON.stringify(finalTimeline) + '\n\n');
+		for(var minute = 0; minute<finalTimeline.length; minute++){
+			finalTimeline[minute].gold = Math.floor(finalTimeline[minute].gold/finalTimeline[minute].numberOfEntries);
+			finalTimeline[minute].xp = Math.floor(finalTimeline[minute].xp/finalTimeline[minute].numberOfEntries);
+		}
+		//console.log('Final timeline post avg \n\n' + JSON.stringify(finalTimeline) + '\n\n');
+		summoner.timeline = finalTimeline;
+		summoner.recentMatches = {};
+	}
+	console.log(JSON.stringify(theFRO));
+	theFRO.state = DONE;
+}
 
 function reportError(error) {
     switch(error){
